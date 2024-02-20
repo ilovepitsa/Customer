@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"os"
 
-	handlers "github.com/ilovepitsa/Customer/api/handlers/customerHandlers.go"
+	handlers "github.com/ilovepitsa/Customer/api/handlers"
 )
 
 func main() {
