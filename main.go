@@ -25,13 +25,9 @@ func main() {
 	custRepo := repo.NewCustomerRepository(db, l)
 	custHandl := handlers.NewCustomerHandler(l, custRepo)
 
-	// custRepo.Add(repo.Customer{Name: "Nikita"})
-	// custRepo.Add(repo.Customer{Name: "Dasha"})
-	// custRepo.Add(repo.Customer{Name: "Gosha"})
-	// custRepo.Add(repo.Customer{Name: "Sasha"})
-
 	sm := http.NewServeMux()
 	sm.Handle("/customers", custHandl)
+	sm.Handle("/customer/", custHandl)
 
 	http.ListenAndServe(":8080", sm)
 }
