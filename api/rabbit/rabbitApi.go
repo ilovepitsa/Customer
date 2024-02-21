@@ -7,7 +7,8 @@ import (
 	"time"
 
 	"github.com/ilovepitsa/Customer/api/repo"
-	pb "github.com/ilovepitsa/Customer/protobuf"
+	// pb "github.com/ilovepitsa/Customer/protobuf"
+	pb "github.com/ilovepitsa/protobufForTestCase"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"google.golang.org/protobuf/proto"
 )

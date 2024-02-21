@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 
+	"github.com/gorilla/mux"
 	repo "github.com/ilovepitsa/Customer/api/repo"
 )
 
@@ -22,7 +24,7 @@ func NewCustomerHandler(l *log.Logger, cr *repo.CustomerRepository) *CustomerHan
 func (ch *CustomerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if strings.EqualFold(r.URL.Path, "/customers") {
-		ch.GetAll(w)
+		ch.GetAll(w, r)
 		return
 	}
 
@@ -35,8 +37,25 @@ func (ch *CustomerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (ch *CustomerHandler) GetAll(w http.ResponseWriter) {
+func (ch *CustomerHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 	customers, err := ch.cr.GetAll()
+	if err != nil {
+		fmt.Fprint(w, "Error access customers ", err)
+		return
+	}
+	fmt.Fprintln(w, customers)
+}
+
+func (ch *CustomerHandler) Get(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id, err := strconv.Atoi(vars["id"])
+
+	if err != nil {
+		fmt.Fprint(w, "WrongId ", err)
+		return
+	}
+
+	customers, err := ch.cr.Get(id)
 	if err != nil {
 		fmt.Fprint(w, "Error access customers ", err)
 		return

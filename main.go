@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 
+	mux "github.com/gorilla/mux"
 	handlers "github.com/ilovepitsa/Customer/api/handlers"
 	"github.com/ilovepitsa/Customer/api/rabbit"
 	repo "github.com/ilovepitsa/Customer/api/repo"
@@ -36,11 +37,16 @@ func main() {
 
 	go rabbitHandler.Consume()
 
-	sm := http.NewServeMux()
-	sm.Handle("/customers", custHandl)
-	sm.Handle("/customer/", custHandl)
+	sm := mux.NewRouter()
+	getRouter := sm.Methods(http.MethodGet).Subrouter()
+	postRouter := sm.Methods(http.MethodPost).Subrouter()
+	// sm.Handle("/customers", custHandl)
+	// sm.Handle("/customer/", custHandl)
+	getRouter.HandleFunc("/customers", custHandl.GetAll)
+	getRouter.HandleFunc("/customer/{id:[0-9]+}", custHandl.Get)
+	postRouter.HandleFunc("/customers", custHandl.AddCustomer)
 
-	l.Println("Starting .... ")
+	l.Printf("Starting  on port %v.... \n", 8080)
 	http.ListenAndServe(":8080", sm)
 
 }

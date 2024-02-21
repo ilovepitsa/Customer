@@ -7,3 +7,7 @@ require (
 	github.com/rabbitmq/amqp091-go v1.9.0
 	google.golang.org/protobuf v1.32.0
 )
+
+require github.com/gorilla/mux v1.8.1
+
+require github.com/ilovepitsa/protobufForTestCase v0.0.0-20240221160048-64e052cbd183

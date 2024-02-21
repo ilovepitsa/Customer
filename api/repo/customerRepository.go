@@ -1,6 +1,7 @@
 package repo
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log"
@@ -41,7 +42,12 @@ func (cr *CustomerRepository) Add(customer Customer) error {
 }
 
 func (cr *CustomerRepository) GetAll() ([]Customer, error) {
-	trans, err := cr.db.Begin()
+	trans, err := cr.db.BeginTx(context.Background(), nil)
+	if err != nil {
+		cr.l.Print(err)
+		trans.Commit()
+		return nil, err
+	}
 	rows, err := trans.Query("Select * from customers;")
 	if err != nil {
 		cr.l.Print(err)
@@ -64,8 +70,13 @@ func (cr *CustomerRepository) GetAll() ([]Customer, error) {
 }
 
 func (cr *CustomerRepository) Get(id int) (Customer, error) {
-	trans, err := cr.db.Begin()
-	rows, err := trans.Query(fmt.Sprintf("Select * from customer where Id = %v", id))
+	trans, err := cr.db.BeginTx(context.Background(), nil)
+	if err != nil {
+		cr.l.Print(err)
+		trans.Commit()
+		return Customer{}, err
+	}
+	rows, err := trans.Query(fmt.Sprintf("Select * from customers where Id = %v", id))
 	if err != nil {
 		cr.l.Print(err)
 		trans.Commit()
