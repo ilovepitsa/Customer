@@ -25,13 +25,13 @@ func (cr *CustomerRepository) Add(customer Customer) error {
 	trans, err := cr.db.Begin()
 	if err != nil {
 		cr.l.Println(err)
-		trans.Commit()
+		trans.Rollback()
 		return err
 	}
 	stmt, err := trans.Exec(fmt.Sprintf("insert into customers (name) values ('%s')", customer.Name))
 	if err != nil {
 		cr.l.Println(err)
-		trans.Commit()
+		trans.Rollback()
 		return err
 	}
 	id, _ := stmt.LastInsertId()
@@ -51,7 +51,7 @@ func (cr *CustomerRepository) GetAll() ([]Customer, error) {
 	rows, err := trans.Query("Select * from customers;")
 	if err != nil {
 		cr.l.Print(err)
-		trans.Commit()
+		trans.Rollback()
 		return nil, err
 	}
 	defer rows.Close()
@@ -73,13 +73,13 @@ func (cr *CustomerRepository) Get(id int) (Customer, error) {
 	trans, err := cr.db.BeginTx(context.Background(), nil)
 	if err != nil {
 		cr.l.Print(err)
-		trans.Commit()
+		trans.Rollback()
 		return Customer{}, err
 	}
 	rows, err := trans.Query(fmt.Sprintf("Select * from customers where Id = %v", id))
 	if err != nil {
 		cr.l.Print(err)
-		trans.Commit()
+		trans.Rollback()
 		return Customer{}, err
 	}
 	cust := Customer{}
