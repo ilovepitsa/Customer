@@ -213,13 +213,51 @@ func (rb *RabbitHandler) Responce_Get(respId int32, cust repo.Customer) {
 }
 
 func (rb *RabbitHandler) ParseRequest_GetAll(req *pb.RequestGetAll) {
-	requestId, customerId := req.RequestId, req.CustomerId
+	requestId := req.RequestId
 
-	cust, err := rb.cr.Get(int(customerId))
+	cust, err := rb.cr.GetAll()
 	if err != nil {
 		rb.l.Println(err)
 		return
 	}
-	go rb.Responce_Get(requestId, cust)
+	go rb.Responce_GetAll(requestId, cust)
 
+}
+
+func TOProtobuFCustomer(customers []repo.Customer) (result []*pb.Customer) {
+	for _, v := range customers {
+		result = append(result, &pb.Customer{Id: int32(v.Id), Name: v.Name})
+	}
+	return
+}
+
+func (rb *RabbitHandler) Responce_GetAll(respId int32, cust []repo.Customer) {
+
+	pbCust := TOProtobuFCustomer(cust)
+	var respGet pb.ResponceGetAll = pb.ResponceGetAll{Customers: pbCust}
+	respProto := pb.Responce{Resp: &pb.Responce_RespGetAll{RespGetAll: &respGet}}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	resp, err := proto.Marshal(&respProto)
+
+	if err != nil {
+		rb.l.Println(err)
+		return
+	}
+
+	err = rb.channel.PublishWithContext(ctx,
+		"customer",
+		"responce",
+		false,
+		false,
+		amqp.Publishing{
+			ContentType: "text/plain",
+			Body:        resp,
+		})
+	if err != nil {
+		rb.l.Println(err)
+		return
+	}
 }
