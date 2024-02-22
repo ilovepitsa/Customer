@@ -9,16 +9,18 @@ import (
 	"strings"
 
 	"github.com/gorilla/mux"
+	"github.com/ilovepitsa/Customer/api/rabbit"
 	repo "github.com/ilovepitsa/Customer/api/repo"
 )
 
 type CustomerHandler struct {
-	l  *log.Logger
-	cr *repo.CustomerRepository
+	l      *log.Logger
+	cr     *repo.CustomerRepository
+	rabbit *rabbit.RabbitHandler
 }
 
-func NewCustomerHandler(l *log.Logger, cr *repo.CustomerRepository) *CustomerHandler {
-	return &CustomerHandler{l: l, cr: cr}
+func NewCustomerHandler(l *log.Logger, cr *repo.CustomerRepository, rabbit *rabbit.RabbitHandler) *CustomerHandler {
+	return &CustomerHandler{l: l, cr: cr, rabbit: rabbit}
 }
 
 func (ch *CustomerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -74,4 +76,30 @@ func (ch *CustomerHandler) AddCustomer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ch.cr.Add(cust)
+}
+
+func (ch *CustomerHandler) GetActive(w http.ResponseWriter, r *http.Request) {
+
+	vars := mux.Vars(r)
+	id, err := strconv.Atoi(vars["id"])
+
+	if err != nil {
+		fmt.Fprint(w, "WrongId ", err)
+		return
+	}
+
+	ch.rabbit.RequestActive(id)
+}
+
+func (ch *CustomerHandler) GetFrozen(w http.ResponseWriter, r *http.Request) {
+
+	vars := mux.Vars(r)
+	id, err := strconv.Atoi(vars["id"])
+
+	if err != nil {
+		fmt.Fprint(w, "WrongId ", err)
+		return
+	}
+
+	ch.rabbit.RequestFrozen(id)
 }

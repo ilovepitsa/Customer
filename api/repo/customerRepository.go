@@ -28,7 +28,7 @@ func (cr *CustomerRepository) Add(customer Customer) error {
 		trans.Rollback()
 		return err
 	}
-	stmt, err := trans.Exec(fmt.Sprintf("insert into customers (name) values ('%s')", customer.Name))
+	stmt, err := trans.Exec(fmt.Sprintf("insert into customer (name) values ('%s')", customer.Name))
 	if err != nil {
 		cr.l.Println(err)
 		trans.Rollback()
@@ -48,7 +48,7 @@ func (cr *CustomerRepository) GetAll() ([]Customer, error) {
 		trans.Commit()
 		return nil, err
 	}
-	rows, err := trans.Query("Select * from customers;")
+	rows, err := trans.Query("Select * from customer;")
 	if err != nil {
 		cr.l.Print(err)
 		trans.Rollback()
@@ -76,7 +76,7 @@ func (cr *CustomerRepository) Get(id int) (Customer, error) {
 		trans.Rollback()
 		return Customer{}, err
 	}
-	rows, err := trans.Query(fmt.Sprintf("Select * from customers where Id = %v", id))
+	rows, err := trans.Query(fmt.Sprintf("Select * from customer where Id = %v", id))
 	if err != nil {
 		cr.l.Print(err)
 		trans.Rollback()

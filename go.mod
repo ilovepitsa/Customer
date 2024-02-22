@@ -10,4 +10,4 @@ require (
 
 require github.com/gorilla/mux v1.8.1
 
-require github.com/ilovepitsa/protobufForTestCase v0.0.0-20240221160048-64e052cbd183
+require github.com/ilovepitsa/protobufForTestCase v0.0.0-20240222163553-03087945f223

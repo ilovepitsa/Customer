@@ -21,12 +21,13 @@ type RabbitParameters struct {
 }
 
 type RabbitHandler struct {
-	l             *log.Logger
-	cr            *repo.CustomerRepository
-	connection    *amqp.Connection
-	channel       *amqp.Channel
-	requestQueue  amqp.Queue
-	responceQueue amqp.Queue
+	l               *log.Logger
+	cr              *repo.CustomerRepository
+	connection      *amqp.Connection
+	channel         *amqp.Channel
+	requestQueue    amqp.Queue
+	responceQueue   amqp.Queue
+	responceAccount amqp.Queue
 }
 
 func NewRabbitHandler(l *log.Logger, cr *repo.CustomerRepository) *RabbitHandler {
@@ -79,6 +80,12 @@ func (rb *RabbitHandler) Init(param RabbitParameters) error {
 		return err
 	}
 
+	rb.responceAccount, err = rb.channel.QueueDeclare("accountResponceC", false, false, false, false, amqp.Table{})
+
+	if err != nil {
+		// rb.l.Println(err)
+		return err
+	}
 	err = rb.channel.Qos(
 		1,
 		0,
@@ -99,8 +106,8 @@ func (rb *RabbitHandler) Close() {
 }
 
 func (rb *RabbitHandler) Consume() {
-	consumeChan, err := rb.channel.Consume(rb.requestQueue.Name, "", true, false, false, false, amqp.Table{})
-
+	consumeRequestChan, err := rb.channel.Consume(rb.requestQueue.Name, "", true, false, false, false, amqp.Table{})
+	consumeAccountResponce, err := rb.channel.Consume(rb.responceAccount.Name, "", true, false, false, false, amqp.Table{})
 	if err != nil {
 		rb.l.Println(err)
 		return
@@ -109,9 +116,9 @@ func (rb *RabbitHandler) Consume() {
 
 	request := &pb.Request{}
 	go func() {
-		for d := range consumeChan {
-			rb.l.Println("Recieve ", d.Body)
+		for d := range consumeRequestChan {
 			err = proto.Unmarshal(d.Body, request)
+			rb.l.Println("Recieve request ", request.String())
 			switch request.Req.(type) {
 			case *pb.Request_ReqAdd:
 				rb.ParseRequest_Add(request.GetReqAdd())
@@ -123,8 +130,49 @@ func (rb *RabbitHandler) Consume() {
 		}
 	}()
 
+	accountResponce := &pb.ResponceAccount{}
+	go func() {
+		for d := range consumeAccountResponce {
+			err = proto.Unmarshal(d.Body, accountResponce)
+			switch accountResponce.Resp.(type) {
+			case *pb.ResponceAccount_RespActive:
+				rb.parseAccountActive(accountResponce.GetRespActive())
+			case *pb.ResponceAccount_RespFrozen:
+				rb.parseAccountFrozen(accountResponce.GetRespFrozen())
+			}
+		}
+	}()
 	rb.l.Println("Waiting commands")
 	<-forever
+}
+
+func (rb *RabbitHandler) parseAccountActive(resp *pb.ResponceActiveBalance) {
+	invoices := resp.Invoices
+
+	if len(invoices) < 1 {
+		rb.l.Println("No active invoices customer id =", resp.RequestId)
+		return
+	}
+
+	rb.l.Println("Active invoices  customer id =", resp.Invoices[0].CustomerId)
+	for _, invoice := range invoices {
+		rb.l.Println(invoice.Number)
+	}
+}
+
+func (rb *RabbitHandler) parseAccountFrozen(resp *pb.ResponceFrozenBalance) {
+
+	invoices := resp.Invoices
+
+	if len(invoices) < 1 {
+		rb.l.Println("No frozen invoices customer id =", resp.RequestId)
+		return
+	}
+
+	rb.l.Println("Frozen invoices customer id =", resp.Invoices[0].CustomerId)
+	for _, invoice := range invoices {
+		rb.l.Println(invoice.Number)
+	}
 }
 
 func (rb *RabbitHandler) ParseRequest_Add(req *pb.RequestAdd) {
@@ -256,6 +304,59 @@ func (rb *RabbitHandler) Responce_GetAll(respId int32, cust []repo.Customer) {
 		amqp.Publishing{
 			ContentType: "text/plain",
 			Body:        resp,
+		})
+	if err != nil {
+		rb.l.Println(err)
+		return
+	}
+}
+
+func (rb *RabbitHandler) RequestActive(id int) {
+	req := pb.RequestActiveBalance{CustomerId: int32(id), RequestId: int32(id)}
+	reqMess := pb.RequestAccount{Req: &pb.RequestAccount_ReqAct{ReqAct: &req}}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	reqByte, err := proto.Marshal(&reqMess)
+	if err != nil {
+		rb.l.Println(err)
+		return
+	}
+	err = rb.channel.PublishWithContext(ctx,
+		"account",
+		"request",
+		false,
+		false,
+		amqp.Publishing{
+			ContentType: "text/plain",
+			Body:        reqByte,
+		})
+	if err != nil {
+		rb.l.Println(err)
+		return
+	}
+
+}
+
+func (rb *RabbitHandler) RequestFrozen(id int) {
+	req := pb.RequestFrozenBalance{CustomerId: int32(id), RequestId: int32(id)}
+	reqMess := pb.RequestAccount{Req: &pb.RequestAccount_ReqFroz{ReqFroz: &req}}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	reqByte, err := proto.Marshal(&reqMess)
+	if err != nil {
+		rb.l.Println(err)
+		return
+	}
+	err = rb.channel.PublishWithContext(ctx,
+		"account",
+		"request",
+		false,
+		false,
+		amqp.Publishing{
+			ContentType: "text/plain",
+			Body:        reqByte,
 		})
 	if err != nil {
 		rb.l.Println(err)

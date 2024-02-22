@@ -15,6 +15,7 @@ import (
 
 func main() {
 	l := log.New(os.Stdout, "Customers ", log.LstdFlags)
+	l.SetFlags(log.LstdFlags | log.Lshortfile)
 
 	connStr := "user=postgres password=123 dbname=TransactionSystem sslmode=disable"
 	db, err := sql.Open("postgres", connStr)
@@ -26,7 +27,6 @@ func main() {
 
 	custRepo := repo.NewCustomerRepository(db, l)
 
-	custHandl := handlers.NewCustomerHandler(l, custRepo)
 	rabbitHandler := rabbit.NewRabbitHandler(l, custRepo)
 
 	err = rabbitHandler.Init(rabbit.RabbitParameters{Login: "customer", Password: "customer", Ip: "localhost", Port: "5672"})
@@ -37,6 +37,8 @@ func main() {
 
 	go rabbitHandler.Consume()
 
+	custHandl := handlers.NewCustomerHandler(l, custRepo, rabbitHandler)
+
 	sm := mux.NewRouter()
 	getRouter := sm.Methods(http.MethodGet).Subrouter()
 	postRouter := sm.Methods(http.MethodPost).Subrouter()
@@ -44,6 +46,8 @@ func main() {
 	// sm.Handle("/customer/", custHandl)
 	getRouter.HandleFunc("/customers", custHandl.GetAll)
 	getRouter.HandleFunc("/customer/{id:[0-9]+}", custHandl.Get)
+	getRouter.HandleFunc("/customer/{id:[0-9]+}/active", custHandl.GetActive)
+	getRouter.HandleFunc("/customer/{id:[0-9]+}/frozen", custHandl.GetFrozen)
 	postRouter.HandleFunc("/customers", custHandl.AddCustomer)
 
 	l.Printf("Starting  on port %v.... \n", 8080)
